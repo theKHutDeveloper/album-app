@@ -10,9 +10,6 @@ async function viewTable(tableName) {
     } catch (err) {
         console.error(`View ${tableName} failed:`, err)
     }
-    finally {
-        await db.close()
-    }
 }
 
 await viewTable("albums")
@@ -20,3 +17,6 @@ await viewTable("genres")
 await viewTable("album_genres")
 await viewTable("streaming_sites")
 await viewTable("album_streaming_sites")
+
+const db = await getDbConnection()
+await db.close()
