@@ -1,4 +1,5 @@
 import { getDbConnection } from "../db/connection.js"
+import groupAlbums from "../utils/groupAlbums.js"
 
 export async function getAlbums(req, res) {
     try {
@@ -6,25 +7,28 @@ export async function getAlbums(req, res) {
 
         const { genre, physical, streaming, search } = req.query
 
-        let query = "SELECT * FROM albums"
         let params = []
         let conditions = []
+        let query = `SELECT albums.*, genres.name as genre_name, streaming_sites.name as streaming_sites 
+                    FROM albums
+                    LEFT JOIN album_genres ON album_genres.album_id = albums.id
+                    LEFT JOIN genres ON genres.id = album_genres.genre_id
+                    LEFT JOIN album_streaming_sites ON album_streaming_sites.album_id = albums.id
+                    LEFT JOIN streaming_sites ON streaming_sites.id = album_streaming_sites.site_id`
 
         if (genre) {
-            query += `
-                JOIN album_genres ON album_genres.album_id = albums.id
-                JOIN genres ON genres.id = album_genres.genre_id
-            `
             conditions.push("genres.name = ?")
             params.push(genre)
         }
 
         if (physical) { 
-            conditions.push("physical = 1") 
+            conditions.push("physical = ?") 
+            params.push(physical)
         }
 
         if (streaming) { 
-            conditions.push("streaming = 1") 
+            conditions.push("streaming = ?") 
+            params.push(streaming)
         }
 
         if (search) {
@@ -38,7 +42,9 @@ export async function getAlbums(req, res) {
         }
 
         const albums = await db.all(query, params)
-        res.json(albums)
+        const groupedAlbums = groupAlbums(albums)
+
+        res.json(groupedAlbums)
 
     } catch (err) {
         console.error("Error fetching albums:", err)
@@ -56,11 +62,3 @@ export async function getGenres(req, res) {
         res.status(500).json({ error: "Failed to fetch genres", details: err.message })
     }
 }
-
-// http://localhost:8000/api/albums?genre=rap
-// http://localhost:8000/api/albums
-// http://localhost:8000/api/albums/genres
-// http://localhost:8000/api/albums?physical=true
-// http://localhost:8000/api/albums?streaming=true
-// http://localhost:8000/api/albums?search=kendrick
-// http://localhost:8000/api/albums?search=kendrick&streaming=1
